@@ -1,0 +1,4 @@
+logs  
+celerybeat-schedule.db
+__pycache__
+db.sqlite3

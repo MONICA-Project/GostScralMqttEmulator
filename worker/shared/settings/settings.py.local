@@ -1,0 +1,86 @@
+from general_types.enumerations import ObservableGenericType
+from general_types.labels import GOST_LABELS_DICTIONARY, LabelThingsName
+import os
+from typing import List, Dict, Any
+import logging
+
+logger = logging.getLogger('textlogger')
+
+
+class GeoRefArea(object):
+    def __init__(self):
+        self.reference_pos_lat = 45.796845
+        self.reference_pos_long = 4.950293
+        self.geoarea_max_east = 300.0
+        self.geoarea_max_north = 200.0
+
+
+# TODO: Such application start from hypothesis of having just one camera
+# for Crowd Density Local messages
+class Settings:
+    list_events_publish: list = list()
+    hostname: str = str()
+    port: int = 0
+    username: str = str()
+    password: str = str()
+    client_id: str = str()
+    geographic_area: GeoRefArea = GeoRefArea()
+    max_counter_people_densitymap: int = 200
+    COUNT_WRISTBANDS: int = 100
+    WRISTBAND_ID_START: int = 1
+    CAMERA_IOTID: int = 6000
+    CAMERA_NAME = "TIVOLI_26"
+    CAMERA_GPP_LATITUDE = 55.67384
+    CAMERA_GPP_LONGITUDE = 12.56717
+    CAMERA_GPO = 30
+    CAMERA_NUMBER_ROWS = 10
+    CAMERA_NUMBER_COLS = 18
+
+    # NOTE: In order to retrieve Thing MQTT messages, it is necessary to add tuple label: type in the following
+    # THINGS_TO_ANALYSE dictionary. For instance, if the lines are both inserted in such list,
+    # both MQTT messages are enabled
+    THINGS_TO_ANALYSE = {
+            LabelThingsName.LABEL_THING_SFN: ObservableGenericType.CROWDDENSITYLOCAL,
+            LabelThingsName.LABEL_THING_WRISTBAND: ObservableGenericType.LOCALIZATION
+    }
+
+    @staticmethod
+    def retrieve_environment_settings() -> bool:
+        try:
+            Settings.hostname = os.environ.get('MQTT_BROKER_IP_ADDRESS', 'mqtt')  # '192.168.229.101'
+            Settings.port = int(os.environ.get('MQTT_BROKER_TCP_PORT', '1883'))
+            Settings.username = os.environ.get('MQTT_BROKER_USERNAME', '')
+            Settings.password = os.environ.get('MQTT_BROKER_PASSWORD', '')
+            Settings.client_id = os.environ.get('MQTT_BROKER_CLIENTID', 'gostmqttemulator')
+
+            print('Settings retrieve_environment_settings Done. hostname: {0}, port: {1}'.format(Settings.hostname,
+                                                                                                 Settings.port))
+            return True
+        except Exception as ex:
+            print('Settings retrieve_environment_settings Exception: {}'.format(ex))
+            return False
+
+    @staticmethod
+    def get_list_topics(dictionary_obs_topics: Dict[str, Dict[str, Any]]) -> List[str]:
+        try:
+            if not dictionary_obs_topics:
+                logger.warning('get_list_topics NO TOPIC Found')
+                return None
+
+            list_topics = list()
+
+            for key in dictionary_obs_topics.keys():
+                value = dictionary_obs_topics[key]
+                if not value:
+                    continue
+
+                topic = value[GOST_LABELS_DICTIONARY.LABEL_GOST_DATASTREAMID]
+
+                logger.info('get_list_topics New TOPIC Created: {}'.format(topic))
+
+                list_topics.append(topic)
+            return list_topics
+        except Exception as ex:
+            logger.error('get_list_topics Exception: {}'.format(ex))
+            return None
+

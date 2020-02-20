@@ -1,0 +1,119 @@
+version: '3.7'
+
+services:
+  mqtt:
+    container_name: gostemul_docker_mqtt_${ENVTYPE}
+    hostname: gostemul_host_mqtt
+    image: ansi/mosquitto:latest
+    networks:
+      - gostemul_docker_network
+    ports:
+      - '${MQTT_QUEUE_PORT}:1883'
+      - '${MQTT_DIAGNOSTIC_PORT}:9001'
+    expose:
+      - "${MQTT_QUEUE_PORT}"
+      - "${MQTT_DIAGNOSTIC_PORT}"
+    entrypoint: /usr/local/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf
+    environment:
+      - MOSQUITTO_MQTT_URL=mqtt
+      - MOSQUITTO_USERNAME=${MOSQUITTO_USERNAME_VALUE}
+      - MOSQUITTO_PASSWORD=${MOSQUITTO_PASSWORD_VALUE}
+    volumes:
+      - ./images/mosquitto:/etc/mosquitto:ro
+      - ./images/mosquitto/auth:/etc/mosquitto/auth
+      - ./images/mosquitto/logs:/var/log/mosquitto:rw
+      - ./images/mosquitto/data:/mosquitto/data/
+
+  # RabbitMQ
+  rabbit:
+    container_name: gostemul_docker_rabbit_${ENVTYPE}
+    hostname: gostemul_host_rabbit_${ENVTYPE}
+    image: rabbitmq:latest
+    networks:
+      - gostemul_docker_network
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS}
+      - RABBITMQ_DEFAULT_VHOST=/
+      - RABBITMQ_LOG_BASE=/var/log/rabbitmq
+      - RABBITMQ_HOSTNAME=rabbit
+    ports:
+      - "${RABBITMQ_EXPOSED_PORT}:5672" # we forward this port because it's useful for debugging
+      - "${RABBITMQ_EXPOSED_PORT_DIAGNOSTIC}:15672" # hre, we can access rabbitmq management plugin
+
+  redis:
+    container_name: gostemul_docker_redis_${ENVTYPE}
+    hostname: gostemul_host_redis_${ENVTYPE}
+    image: redis:latest
+    sysctls:
+      net.core.somaxconn: 1024
+    ports:
+      - '${REDIS_PORT}:6379'
+    networks:
+      - gostemul_docker_network
+
+  #Celery worker
+  worker:
+    container_name: gostemul_docker_celery_worker
+    hostname: gostemul_host_celery_worker
+    volumes:
+      - .:/code
+    build:
+      context: .
+      dockerfile: images/worker_celery/Dockerfile
+    command: images/worker_celery/celery_entrypoint.sh
+    networks:
+      - gostemul_docker_network
+    environment:
+      - MQTT_BROKER_IP_ADDRESS=mqtt
+      - MQTT_BROKER_USERNAME=${MOSQUITTO_USERNAME_VALUE}
+      - MQTT_BROKER_PASSWORD=${MOSQUITTO_PASSWORD_VALUE}
+      - MQTT_BROKER_CLIENTID=${MOSQUITTO_CLIENT_ID_VALUE}
+      - DJANGO_SETTINGS_MODULE=shared.settings.appglobalconf
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS}
+      - RABBITMQ_HOSTNAME=rabbit
+      - CACHEREDIS_DEFAULT_HOSTNAME=redis
+      - CACHEREDIS_DEFAULT_PORT=6379
+      - GOST_THINGID_SFN=${GOST_THINGID_SFN_VALUE}
+      - GOST_THINGID_WRISTBAND=${GOST_THINGID_WRISTBANDS_VALUE}
+    links:
+      - rabbit
+      - mqtt
+      - redis
+    depends_on:
+      - rabbit
+      - mqtt
+      - redis
+  web:
+    container_name: gostemul_docker_web
+    hostname: gostemul_host_web
+    restart: always
+    build:
+      context: .  # Current directory
+      dockerfile: ./images/web/Dockerfile
+    command: ./images/web/run_web.sh
+    volumes:
+      - .:/code
+    ports:
+      - '${WEB_GOST_PORT}:8000'
+      - '${WEB_DIAGNOSTIC_PORT}:3001'
+    links:
+      - rabbit
+      - mqtt
+    depends_on:
+      - rabbit
+      - mqtt
+    environment:
+      - LOCALHOST_MACHINE=${V_LOCALHOST_MACHINE}
+      - EXPOSED_MQTT_HOST=${V_LOCALHOST_MACHINE}
+      - EXPOSED_MQTT_PORT=${MQTT_QUEUE_PORT}
+      - GOST_THINGID_SFN=${GOST_THINGID_SFN_VALUE}
+      - GOST_THINGID_WRISTBAND=${GOST_THINGID_WRISTBANDS_VALUE}
+    networks:
+      - gostemul_docker_network
+
+
+networks:
+    gostemul_docker_network:
+      name: gost_emul_network_${ENVTYPE}
