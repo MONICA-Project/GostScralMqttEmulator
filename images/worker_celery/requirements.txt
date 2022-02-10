@@ -26,7 +26,7 @@ Jinja2==2.10
 kombu==4.6.7
 Markdown==2.6.11
 MarkupSafe==1.0
-numpy==1.15.2
+numpy==1.21.0
 paho-mqtt==1.4.0
 PasteDeploy==1.5.2
 pbr==4.2.0
