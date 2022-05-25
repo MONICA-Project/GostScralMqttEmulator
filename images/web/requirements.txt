@@ -36,7 +36,7 @@ psycopg2-binary==2.8.4
 ptvsd==3.0.0
 pygeoif==0.7
 Pygments==2.7.4
-PyJWT==1.6.4
+PyJWT==2.4.0
 pyramid==1.9.2
 python-dateutil==2.7.3
 pytz==2018.5
