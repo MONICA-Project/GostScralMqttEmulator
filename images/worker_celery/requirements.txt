@@ -16,7 +16,7 @@ djangorestframework==3.10.3
 djangorestframework-gis==0.3
 djangorestframework-simplejwt==3.2.3
 fastkml==0.11
-flower==0.9.2
+flower==1.2.0
 geographiclib==1.49
 geopy==1.19.0
 hupper==1.3
